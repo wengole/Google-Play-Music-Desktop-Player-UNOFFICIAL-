@@ -122,6 +122,12 @@ namespace MaterialSkin.Controls
             }
         }
 
+        public struct POINTS
+        {
+            public int x;
+            public int y;
+        }
+
         private enum ResizeDirection
         {
             BottomLeft,
@@ -173,6 +179,34 @@ namespace MaterialSkin.Controls
 
         protected override void WndProc(ref Message m)
         {
+            if (m.Msg == WM_NCLBUTTONDOWN)
+            {
+                int x = Control.MousePosition.X - Location.X;
+                int y = Control.MousePosition.Y - Location.Y;
+                bool handled = false;
+                if (xButtonBounds.Contains(new Point(x, y)))
+                {
+                    handled = true;
+                    Close();
+                } else if (minButtonBounds.Contains(new Point(x, y)))
+                {
+                    handled = true;
+                    WindowState = FormWindowState.Minimized;
+                } else if (maxButtonBounds.Contains(new Point(x, y)))
+                {
+                    handled = true;
+                    MaximizeWindow(!Maximized);
+                }
+                if (Size.Width - x < 120 && y >= BORDER_WIDTH && Size.Width - x >= BORDER_WIDTH && y <= xButtonBounds.Height)
+                {
+                    handled = true;
+                }
+                if (handled)
+                {
+                    m.Result = new IntPtr(0);
+                    return;
+                }
+            }
             base.WndProc(ref m);
             if (DesignMode || IsDisposed) return;
 
@@ -363,12 +397,16 @@ namespace MaterialSkin.Controls
             }
         }
 
+        public bool minimizeButton = true;
+        public bool maximizeButton = true;
+        public bool closeButton = true;
+
         private void UpdateButtons(MouseEventArgs e, bool up = false)
         {
             if (DesignMode) return;
             ButtonState oldState = buttonState;
-            bool showMin = MinimizeBox && ControlBox;
-            bool showMax = MaximizeBox && ControlBox;
+            bool showMin = minimizeButton;
+            bool showMax = maximizeButton;
 
             if (e.Button == MouseButtons.Left && !up)
             {
@@ -378,7 +416,7 @@ namespace MaterialSkin.Controls
                     buttonState = ButtonState.MinDown;
                 else if (showMax && maxButtonBounds.Contains(e.Location))
                     buttonState = ButtonState.MaxDown;
-                else if (ControlBox && xButtonBounds.Contains(e.Location))
+                else if (closeButton && xButtonBounds.Contains(e.Location))
                     buttonState = ButtonState.XDown;
                 else
                     buttonState = ButtonState.None;
@@ -399,7 +437,7 @@ namespace MaterialSkin.Controls
                     if (oldState == ButtonState.MinDown)
                         WindowState = FormWindowState.Minimized;
                 }
-                else if (MaximizeBox && ControlBox && maxButtonBounds.Contains(e.Location))
+                else if (maximizeButton && closeButton && maxButtonBounds.Contains(e.Location))
                 {
                     buttonState = ButtonState.MaxOver;
 
@@ -407,7 +445,7 @@ namespace MaterialSkin.Controls
                         MaximizeWindow(!Maximized);
 
                 }
-                else if (ControlBox && xButtonBounds.Contains(e.Location))
+                else if (closeButton && xButtonBounds.Contains(e.Location))
                 {
                     buttonState = ButtonState.XOver;
 
@@ -422,7 +460,7 @@ namespace MaterialSkin.Controls
 
         public void MaximizeWindow(bool maximize)
         {
-            if (!MaximizeBox || !ControlBox) return;
+            if (!maximizeButton || !closeButton) return;
 
             Maximized = maximize;
 
@@ -525,8 +563,8 @@ namespace MaterialSkin.Controls
             }
 
             // Determine whether or not we even should be drawing the buttons.
-            bool showMin = MinimizeBox && ControlBox;
-            bool showMax = MaximizeBox && ControlBox;
+            bool showMin = minimizeButton;
+            bool showMax = maximizeButton;
             var hoverBrush = SkinManager.GetFlatButtonHoverBackgroundBrush();
             var downBrush = SkinManager.GetFlatButtonPressedBackgroundBrush();
 
@@ -543,10 +581,10 @@ namespace MaterialSkin.Controls
             if (buttonState == ButtonState.MaxDown && showMax)
                 g.FillRectangle(downBrush, maxButtonBounds);
 
-            if (buttonState == ButtonState.XOver && ControlBox)
+            if (buttonState == ButtonState.XOver && closeButton)
                 g.FillRectangle(hoverBrush, xButtonBounds);
 
-            if (buttonState == ButtonState.XDown && ControlBox)
+            if (buttonState == ButtonState.XDown && closeButton)
                 g.FillRectangle(downBrush, xButtonBounds);
 
             using (var formButtonsPen = new Pen(SkinManager.ACTION_BAR_TEXT_SECONDARY, 2))
@@ -579,7 +617,7 @@ namespace MaterialSkin.Controls
                 }
 
                 // Close button
-                if (ControlBox)
+                if (closeButton)
                 {
                     g.DrawLine(
                         formButtonsPen,
@@ -612,7 +650,7 @@ namespace MaterialSkin.Controls
         public bool PreFilterMessage(ref Message m)
         {
 
-            if (m.Msg == WM_MOUSEMOVE)
+            if (m.Msg == WM_MOUSEMOVE || m.Msg == 0xA0)
             {
                 if (MouseMove != null)
                 {

@@ -76,6 +76,23 @@ namespace Google_Play_Music
             // Check for updates on the Github Release API
             checkForUpdates();
             RegisterKeyHooks();
+
+            ControlBox = false;
+            MinimizeBox = false;
+            MaximizeBox = false;
+        }
+
+        [DllImport("dwmapi.dll")]
+        static extern void DwmExtendFrameIntoClientArea(IntPtr hWnd, ref Margins pMargins);
+
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct Margins
+        {
+            public int cxLeftWidth;
+            public int cxRightWidth;
+            public int cyTopHeight;
+            public int cyBottomHeight;
         }
 
         protected override void WndProc(ref Message m)
@@ -85,11 +102,30 @@ namespace Google_Play_Music
             const int WM_SIZE = 0x0005;
             const int WM_SYSCOMMAND = 0x0112;
             const int SC_RESTORE = 0xF120;
+            const int WM_NCPAINT = 0x85;
+            const int WM_ACTIVATE = 0x0006;
 
             if (m.Msg == WM_NCCALCSIZE && m.WParam.ToInt32() == 1)
             {
                 m.Result = new IntPtr(0xF0);   // Align client area to all borders (Fake borderless)
                 return;
+            }
+            else if (m.Msg == WM_NCPAINT)
+            {
+                m.Result = new IntPtr(0);
+                return;
+            }
+            else if (m.Msg == WM_ACTIVATE)
+            {
+                // Extend the frame into the client area.
+                Margins margins;
+
+                margins.cxLeftWidth = 8;      // 8
+                margins.cxRightWidth = 8;    // 8
+                margins.cyBottomHeight = 8; // 20
+                margins.cyTopHeight = 0;       // 27
+
+                DwmExtendFrameIntoClientArea(m.HWnd, ref margins);
             }
             else if (m.Msg == WM_SIZING && currently_sizing)
             {

@@ -21,8 +21,8 @@ namespace Google_Play_Music
         public UpdateDialog(string changeLog, string oldVersion, string newVersion)
         {
             // Hide some controls
-            MaximizeBox = false;
-            MinimizeBox = false;
+            minimizeButton = false;
+            maximizeButton = false;
             
             // Theme it :D
             skin = MaterialSkinManager.Instance;
